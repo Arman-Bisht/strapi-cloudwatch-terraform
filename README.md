@@ -8,15 +8,37 @@
 
 ---
 
-## ✅ Task Completed
+## ✅ Tasks Completed
 
-1. ✓ Cloned official Strapi repository
-2. ✓ Installed dependencies using yarn
-3. ✓ Built the project successfully
-4. ✓ Started development server
-5. ✓ Created sample content entry
-6. ✓ Uploaded cover image to Media Library
-7. ✓ Documented setup process
+### Task 1: Strapi Local Setup
+- ✓ Cloned official Strapi repository
+- ✓ Installed dependencies and built project
+- ✓ Started development server
+- ✓ Created sample content and uploaded media
+
+### Task 2: Docker Setup
+- ✓ Created Dockerfile for Strapi application
+- ✓ Built and tested Docker image locally
+- ✓ Documented Docker setup process
+- ✓ See: `TASK2_DOCKER_SUMMARY.md`
+
+### Task 3: Docker Compose Multi-Container Setup
+- ✓ Created docker-compose.yml with PostgreSQL
+- ✓ Configured Nginx reverse proxy
+- ✓ Set up networking between containers
+- ✓ Documented in `strapi/examples/getstarted/`
+
+### Task 4: Docker Deep Dive Documentation
+- ✓ Explained Docker vs VMs
+- ✓ Documented Docker architecture
+- ✓ Covered Dockerfile, networking, volumes
+- ✓ See: `strapi/examples/getstarted/Task_4_docker.md`
+
+### Task 5: AWS EC2 Deployment with Terraform
+- ✓ Automated infrastructure with Terraform
+- ✓ Deployed Strapi on EC2 using Docker
+- ✓ Configured VPC, Security Groups, and networking
+- ✓ See: `strapi/examples/getstarted/TASK5_README.md`
 
 ---
 
@@ -72,25 +94,36 @@ Access admin panel at: `http://localhost:1337/admin`
 ## 📁 Project Structure
 
 ```
-strapi/
-├── packages/          # Core Strapi packages
-│   ├── core/         # Admin panel & core server
-│   └── plugins/      # Official plugins
-├── examples/         # Example applications
-│   └── getstarted/   # Development instance
-├── tests/            # Test suites
-└── docs/             # Documentation
+Script-Smiths/
+├── README.md                           # This file
+├── TASK2_DOCKER_SUMMARY.md            # Task 2 documentation
+└── strapi/
+    └── examples/
+        └── getstarted/
+            ├── Dockerfile                  # Docker image definition
+            ├── docker-compose.yml          # Multi-container setup
+            ├── nginx.conf                  # Nginx configuration
+            ├── Task_4_docker.md           # Docker deep dive
+            ├── TASK5_README.md            # EC2 deployment guide
+            └── terraform/                  # Infrastructure as code
+                ├── main.tf
+                ├── variables.tf
+                ├── outputs.tf
+                └── user_data.sh
 ```
 
 ---
 
-## 🔧 Key Features Verified
+## 🔧 Technologies Used
 
-- ✓ Content Manager functionality
-- ✓ Media Library (image upload)
-- ✓ Content Type Builder
-- ✓ Admin Panel access
-- ✓ Development server running
+- **Strapi**: Headless CMS
+- **Docker**: Containerization
+- **Docker Compose**: Multi-container orchestration
+- **PostgreSQL**: Database
+- **Nginx**: Reverse proxy
+- **Terraform**: Infrastructure as Code
+- **AWS EC2**: Cloud deployment
+- **Amazon Linux 2023**: Operating system
 
 ---
 

@@ -1,0 +1,7 @@
+# Example Terraform Variables
+# Copy this file to terraform.tfvars and update with your values
+
+aws_region    = "ap-south-1"
+instance_type = "t2.micro"  # Free Tier eligible (or use t3.small for better performance)
+key_name      = "your-key-pair-name"
+docker_image  = "your-dockerhub-username/strapi-app:latest"
