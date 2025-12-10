@@ -17,6 +17,6 @@ output "strapi_url" {
 
 output "ssh_command" {
   description = "SSH command to connect to the instance"
-  value       = "ssh -i ${var.key_name}.pem ec2-user@${aws_instance.strapi_instance.public_ip}"
+  value       = var.key_name != "" ? "ssh -i ${var.key_name}.pem ec2-user@${aws_instance.strapi_instance.public_ip}" : "Use EC2 Instance Connect in AWS Console"
 }
 

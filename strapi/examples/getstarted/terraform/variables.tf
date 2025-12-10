@@ -13,8 +13,9 @@ variable "instance_type" {
 }
 
 variable "key_name" {
-  description = "Name of the SSH key pair"
+  description = "Name of the SSH key pair (optional - leave empty to use EC2 Instance Connect)"
   type        = string
+  default     = ""
 }
 
 

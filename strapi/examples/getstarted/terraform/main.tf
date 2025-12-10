@@ -15,61 +15,25 @@ provider "aws" {
   region = var.aws_region
 }
 
-# VPC and Networking
-resource "aws_vpc" "strapi_vpc" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_hostnames = true
-  enable_dns_support   = true
-
-  tags = {
-    Name = "strapi-vpc"
-  }
+# Use Default VPC and Subnet
+data "aws_vpc" "default" {
+  default = true
 }
 
-resource "aws_internet_gateway" "strapi_igw" {
-  vpc_id = aws_vpc.strapi_vpc.id
-
-  tags = {
-    Name = "strapi-igw"
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
   }
-}
-
-resource "aws_subnet" "strapi_subnet" {
-  vpc_id                  = aws_vpc.strapi_vpc.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = data.aws_availability_zones.available.names[0]
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name = "strapi-subnet"
-  }
-}
-
-resource "aws_route_table" "strapi_rt" {
-  vpc_id = aws_vpc.strapi_vpc.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.strapi_igw.id
-  }
-
-  tags = {
-    Name = "strapi-route-table"
-  }
-}
-
-resource "aws_route_table_association" "strapi_rta" {
-  subnet_id      = aws_subnet.strapi_subnet.id
-  route_table_id = aws_route_table.strapi_rt.id
 }
 
 
 
 # Security Group for EC2
 resource "aws_security_group" "strapi_sg" {
-  name        = "strapi-security-group"
+  name        = "strapi-security-group-v2"
   description = "Security group for Strapi application"
-  vpc_id      = aws_vpc.strapi_vpc.id
+  vpc_id      = data.aws_vpc.default.id
 
   # SSH access
   ingress {
@@ -139,9 +103,9 @@ data "aws_ami" "amazon_linux_2023" {
 resource "aws_instance" "strapi_instance" {
   ami                    = data.aws_ami.amazon_linux_2023.id
   instance_type          = var.instance_type
-  subnet_id              = aws_subnet.strapi_subnet.id
+  subnet_id              = data.aws_subnets.default.ids[0]
   vpc_security_group_ids = [aws_security_group.strapi_sg.id]
-  key_name               = var.key_name
+  key_name               = var.key_name != "" ? var.key_name : null
 
   user_data = file("${path.module}/user_data.sh")
 
