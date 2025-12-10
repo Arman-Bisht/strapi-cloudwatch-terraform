@@ -151,6 +151,6 @@ resource "aws_instance" "strapi_instance" {
   }
 
   tags = {
-    Name = "strapi-server"
+    Name = "Arman"
   }
 }
