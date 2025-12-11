@@ -10,7 +10,7 @@ on:
 
 env:
   AWS_REGION: ap-south-1
-  ECR_REPOSITORY: strapi-app
+  ECR_REPOSITORY: arman
 
 jobs:
   build-and-push:

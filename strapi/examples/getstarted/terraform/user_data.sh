@@ -71,11 +71,11 @@ rm -rf aws awscliv2.zip
 
 # Login to ECR
 echo "Logging in to ECR..."
-aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 891377350540.dkr.ecr.ap-south-1.amazonaws.com
+aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 301782007642.dkr.ecr.ap-south-1.amazonaws.com
 
 # Pull Strapi image from ECR
 echo "Pulling Strapi Docker image from ECR..."
-docker pull 891377350540.dkr.ecr.ap-south-1.amazonaws.com/strapi-app:latest
+docker pull 301782007642.dkr.ecr.ap-south-1.amazonaws.com/arman:latest
 
 # Run Strapi container with PostgreSQL connection
 echo "Starting Strapi container with PostgreSQL..."
@@ -96,7 +96,7 @@ docker run -d \
   -e ADMIN_JWT_SECRET=tobemodified \
   -e TRANSFER_TOKEN_SALT=tobemodified \
   -e JWT_SECRET=tobemodified \
-  891377350540.dkr.ecr.ap-south-1.amazonaws.com/strapi-app:latest
+  301782007642.dkr.ecr.ap-south-1.amazonaws.com/arman:latest
 
 echo "Strapi deployment completed!"
 echo "PostgreSQL running in Docker container"
