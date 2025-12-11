@@ -61,9 +61,17 @@ docker run -d \
 echo "Waiting for PostgreSQL to be ready..."
 sleep 15
 
-# Pull official Strapi image
-echo "Pulling official Strapi Docker image..."
-docker pull strapi/strapi:latest
+# Install AWS CLI for ECR authentication
+echo "Installing AWS CLI..."
+dnf install -y aws-cli
+
+# Authenticate Docker with ECR
+echo "Authenticating Docker with ECR..."
+aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 301782007642.dkr.ecr.ap-south-1.amazonaws.com
+
+# Pull Strapi image from ECR
+echo "Pulling Strapi Docker image from ECR..."
+docker pull 301782007642.dkr.ecr.ap-south-1.amazonaws.com/strapi-app:latest
 
 # Run Strapi container with PostgreSQL connection
 echo "Starting Strapi container with PostgreSQL..."
@@ -84,7 +92,7 @@ docker run -d \
   -e ADMIN_JWT_SECRET=tobemodified \
   -e TRANSFER_TOKEN_SALT=tobemodified \
   -e JWT_SECRET=tobemodified \
-  strapi/strapi:latest
+  301782007642.dkr.ecr.ap-south-1.amazonaws.com/strapi-app:latest
 
 echo "Strapi deployment completed!"
 echo "PostgreSQL running in Docker container"
