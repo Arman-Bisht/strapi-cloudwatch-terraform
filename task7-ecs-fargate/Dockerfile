@@ -23,11 +23,21 @@ RUN npm install --production=false
 # Copy application files
 COPY . .
 
-# Set environment to development (more forgiving for first run)
+# Set environment to development
 ENV NODE_ENV=development
 
 # Expose Strapi port
 EXPOSE 1337
 
-# Start Strapi in development mode (auto-builds on first run)
-CMD ["npm", "run", "develop"]
+# Create a startup script that handles first-time setup
+RUN echo '#!/bin/sh\n\
+if [ ! -d ".cache" ]; then\n\
+  echo "First run detected, building admin..."\n\
+  npm run build || true\n\
+fi\n\
+echo "Starting Strapi..."\n\
+exec npm run start\n\
+' > /opt/app/start.sh && chmod +x /opt/app/start.sh
+
+# Start Strapi using the startup script
+CMD ["/opt/app/start.sh"]
