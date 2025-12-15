@@ -56,6 +56,20 @@
 **CD Workflow - Terraform Deployment:**
 ![CD Deployment Success](CD_deployment.png)
 
+### Task 7: ECS Fargate Deployment with Complete CI/CD Automation
+- ✓ Deployed Strapi on AWS ECS Fargate (serverless containers)
+- ✓ Infrastructure managed entirely via Terraform
+- ✓ Automated CI/CD pipeline with GitHub Actions
+- ✓ Docker images automatically built, tagged, and pushed to ECR
+- ✓ ECS task definitions automatically updated on code push
+- ✓ CloudWatch Logs integration for debugging
+- ✓ Cost-optimized architecture (~$17/month)
+- ✓ Complete automation - zero manual deployment steps
+- ✓ See: `task7-ecs-fargate/` and `.github/workflows/ecs-ci.yml`
+
+**Live Deployment**: http://3.109.214.227:1337/admin  
+**Personal Repository**: https://github.com/Arman-Bisht/git_workflow_ECS
+
 ---
 
 ## 🚀 Setup Steps
@@ -115,8 +129,23 @@ Script-Smiths/
 ├── TASK2_DOCKER_SUMMARY.md            # Task 2 documentation
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                      # CI workflow for Docker builds
-│       └── terraform.yml               # CD workflow for deployments
+│       ├── ci.yml                      # Task 6: CI workflow
+│       ├── terraform.yml               # Task 6: CD workflow
+│       ├── ecs-ci.yml                  # Task 7: ECS CI/CD workflow
+│       └── ecs-cd.yml                  # Task 7: Manual deployment
+├── task7-ecs-fargate/                  # Task 7: ECS Fargate deployment
+│   ├── Dockerfile                      # Strapi container image
+│   ├── package.json                    # Application dependencies
+│   ├── config/                         # Strapi configuration
+│   ├── src/                            # Application code
+│   ├── README.md                       # Task 7 documentation
+│   └── terraform/                      # ECS infrastructure
+│       ├── main.tf                     # Provider & backend
+│       ├── ecr.tf                      # Container registry
+│       ├── ecs.tf                      # Fargate cluster & service
+│       ├── iam.tf                      # Permissions & roles
+│       ├── security_groups.tf          # Network security
+│       └── variables.tf                # Configuration
 └── strapi/
     └── examples/
         └── getstarted/
@@ -140,11 +169,14 @@ Script-Smiths/
 - **Strapi**: Headless CMS
 - **Docker**: Containerization
 - **Docker Compose**: Multi-container orchestration
-- **PostgreSQL**: Database
+- **PostgreSQL**: Database (Task 3-6)
+- **SQLite**: Database (Task 7)
 - **Nginx**: Reverse proxy
 - **Terraform**: Infrastructure as Code
-- **AWS EC2**: Cloud deployment
+- **AWS EC2**: Cloud deployment (Task 5-6)
+- **AWS ECS Fargate**: Serverless containers (Task 7)
 - **AWS ECR**: Container registry
+- **AWS CloudWatch**: Logging and monitoring
 - **GitHub Actions**: CI/CD automation
 - **Amazon Linux 2023**: Operating system
 
