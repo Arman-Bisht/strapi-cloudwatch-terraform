@@ -1,10 +1,8 @@
 # CD Workflow for ECS Fargate - Update Task Definition and Deploy
 
-name: ECS CD - Deploy to Fargate
+name: ECS CD - Deploy to Fargate (Manual)
 
 on:
-  repository_dispatch:
-    types: [deploy-ecs]
   workflow_dispatch:
     inputs:
       image_tag:
@@ -42,11 +40,7 @@ jobs:
       - name: Get image tag
         id: image-tag
         run: |
-          if [ "${{ github.event_name }}" == "repository_dispatch" ]; then
-            echo "tag=${{ github.event.client_payload.image_tag }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
-          fi
+          echo "tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
 
       - name: Download current task definition
         run: |

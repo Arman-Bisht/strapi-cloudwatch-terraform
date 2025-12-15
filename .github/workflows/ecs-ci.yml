@@ -67,15 +67,89 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Repository:** \`${{ env.ECR_REPOSITORY }}\`" >> $GITHUB_STEP_SUMMARY
 
-  trigger-deployment:
-    name: Trigger ECS Deployment
+  deploy:
+    name: Deploy to ECS
     needs: build-and-push
     runs-on: ubuntu-latest
 
     steps:
-      - name: Trigger CD workflow
-        uses: peter-evans/repository-dispatch@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          event-type: deploy-ecs
-          client-payload: '{"image_tag": "${{ needs.build-and-push.outputs.image_tag }}", "image_uri": "${{ needs.build-and-push.outputs.image_uri }}"}'
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition arman-strapi-ecs-task \
+            --query taskDefinition > task-definition.json
+
+      - name: Update task definition with new image
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: strapi
+          image: ${{ needs.build-and-push.outputs.image_uri }}
+
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: arman-strapi-ecs-service
+          cluster: arman-strapi-ecs-cluster
+          wait-for-service-stability: true
+
+      - name: Get Task Public IP
+        id: task-ip
+        run: |
+          sleep 10
+          TASK_ARN=$(aws ecs list-tasks \
+            --cluster arman-strapi-ecs-cluster \
+            --service-name arman-strapi-ecs-service \
+            --query 'taskArns[0]' \
+            --output text)
+          
+          if [ "$TASK_ARN" != "None" ] && [ -n "$TASK_ARN" ]; then
+            ENI_ID=$(aws ecs describe-tasks \
+              --cluster arman-strapi-ecs-cluster \
+              --tasks $TASK_ARN \
+              --query "tasks[0].attachments[0].details[?name=='networkInterfaceId'].value" \
+              --output text)
+            
+            TASK_IP=$(aws ec2 describe-network-interfaces \
+              --network-interface-ids $ENI_ID \
+              --query "NetworkInterfaces[0].Association.PublicIp" \
+              --output text)
+            
+            echo "ip=${TASK_IP}" >> $GITHUB_OUTPUT
+          else
+            echo "ip=Not available yet" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deployment Summary
+        run: |
+          echo "### 🚀 Deployment Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Tag:** \`${{ needs.build-and-push.outputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**ECS Cluster:** \`arman-strapi-ecs-cluster\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**ECS Service:** \`arman-strapi-ecs-service\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.task-ip.outputs.ip }}" != "Not available yet" ]; then
+            echo "**Application URL:** http://${{ steps.task-ip.outputs.ip }}:1337" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Admin Panel:** http://${{ steps.task-ip.outputs.ip }}:1337/admin" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Note:** Task IP will be available once the task is running" >> $GITHUB_STEP_SUMMARY
+          fi
