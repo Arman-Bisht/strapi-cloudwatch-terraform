@@ -7,10 +7,6 @@ resource "aws_ecs_cluster" "main" {
     name  = "containerInsights"
     value = "enabled"
   }
-
-  tags = {
-    Name = "${var.project_name}-cluster"
-  }
 }
 
 resource "aws_ecs_task_definition" "strapi" {
@@ -45,17 +41,12 @@ resource "aws_ecs_task_definition" "strapi" {
     logConfiguration = {
       logDriver = "awslogs"
       options = {
-        "awslogs-group"         = "/ecs/${var.project_name}"
+        "awslogs-group"         = aws_cloudwatch_log_group.ecs_strapi.name
         "awslogs-region"        = var.aws_region
-        "awslogs-stream-prefix" = "strapi"
-        "awslogs-create-group"  = "true"
+        "awslogs-stream-prefix" = "ecs/strapi"
       }
     }
   }])
-
-  tags = {
-    Name = "${var.project_name}-task"
-  }
 }
 
 
@@ -73,8 +64,4 @@ resource "aws_ecs_service" "strapi" {
   }
 
   depends_on = [aws_iam_role_policy_attachment.ecs_task_execution]
-
-  tags = {
-    Name = "${var.project_name}-service"
-  }
 }

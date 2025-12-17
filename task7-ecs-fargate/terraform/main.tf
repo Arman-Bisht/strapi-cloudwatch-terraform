@@ -5,7 +5,7 @@ terraform {
   required_version = ">= 1.0"
   
   backend "s3" {
-    bucket  = "arman-terraform-ecs-state"
+    bucket  = "arman-terraform-ecs-state-org"
     key     = "ecs-fargate/terraform.tfstate"
     region  = "ap-south-1"
     encrypt = true
