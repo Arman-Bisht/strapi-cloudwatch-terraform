@@ -56,19 +56,22 @@
 **CD Workflow - Terraform Deployment:**
 ![CD Deployment Success](CD_deployment.png)
 
-### Task 7: ECS Fargate Deployment with Complete CI/CD Automation
+### Task 7 & 8: ECS Fargate Deployment with CI/CD and CloudWatch Monitoring
 - ✓ Deployed Strapi on AWS ECS Fargate (serverless containers)
 - ✓ Infrastructure managed entirely via Terraform
 - ✓ Automated CI/CD pipeline with GitHub Actions
 - ✓ Docker images automatically built, tagged, and pushed to ECR
 - ✓ ECS task definitions automatically updated on code push
-- ✓ CloudWatch Logs integration for debugging
-- ✓ Cost-optimized architecture (~$17/month)
+- ✓ CloudWatch Logs for application logging
+- ✓ CloudWatch Container Insights for metrics (CPU, Memory, Network)
+- ✓ CloudWatch Dashboard with real-time monitoring
+- ✓ CloudWatch Alarms for high CPU, memory, and task health
+- ✓ Cost-optimized architecture (~$20/month with monitoring)
 - ✓ Complete automation - zero manual deployment steps
-- ✓ See: `task7-ecs-fargate/` and `.github/workflows/ecs-ci.yml`
+- ✓ See: `ecs-fargate/` and `.github/workflows/ecs-ci.yml`
 
-**Live Deployment**: http://3.109.214.227:1337/admin  
-**Personal Repository**: https://github.com/Arman-Bisht/git_workflow_ECS
+**Live Deployment**: http://3.110.99.188:1337/admin  
+**Repository**: https://github.com/Arman-Bisht/strapi-cloudwatch-terraform
 
 ---
 
@@ -133,18 +136,21 @@ Script-Smiths/
 │       ├── terraform.yml               # Task 6: CD workflow
 │       ├── ecs-ci.yml                  # Task 7: ECS CI/CD workflow
 │       └── ecs-cd.yml                  # Task 7: Manual deployment
-├── task7-ecs-fargate/                  # Task 7: ECS Fargate deployment
+├── ecs-fargate/                        # Task 7 & 8: ECS Fargate with CloudWatch
 │   ├── Dockerfile                      # Strapi container image
 │   ├── package.json                    # Application dependencies
 │   ├── config/                         # Strapi configuration
 │   ├── src/                            # Application code
-│   ├── README.md                       # Task 7 documentation
+│   ├── README.md                       # Deployment documentation
+│   ├── TASK8_CLOUDWATCH.md            # CloudWatch monitoring guide
 │   └── terraform/                      # ECS infrastructure
 │       ├── main.tf                     # Provider & backend
 │       ├── ecr.tf                      # Container registry
 │       ├── ecs.tf                      # Fargate cluster & service
 │       ├── iam.tf                      # Permissions & roles
 │       ├── security_groups.tf          # Network security
+│       ├── cloudwatch.tf               # Monitoring & alarms
+│       ├── outputs.tf                  # Infrastructure outputs
 │       └── variables.tf                # Configuration
 └── strapi/
     └── examples/
@@ -174,9 +180,9 @@ Script-Smiths/
 - **Nginx**: Reverse proxy
 - **Terraform**: Infrastructure as Code
 - **AWS EC2**: Cloud deployment (Task 5-6)
-- **AWS ECS Fargate**: Serverless containers (Task 7)
+- **AWS ECS Fargate**: Serverless containers (Task 7-8)
 - **AWS ECR**: Container registry
-- **AWS CloudWatch**: Logging and monitoring
+- **AWS CloudWatch**: Logging, metrics, dashboards, and alarms (Task 8)
 - **GitHub Actions**: CI/CD automation
 - **Amazon Linux 2023**: Operating system
 

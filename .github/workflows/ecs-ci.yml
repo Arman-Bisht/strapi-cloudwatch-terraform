@@ -8,7 +8,7 @@ on:
       - main
       - Arman_Bisht_v2
     paths:
-      - 'task7-ecs-fargate/**'
+      - 'ecs-fargate/**'
       - '.github/workflows/ecs-ci.yml'
 
 env:
@@ -40,7 +40,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build Docker image
-        working-directory: task7-ecs-fargate
+        working-directory: ecs-fargate
         run: |
           docker build -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }} .
           docker tag ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }} \
