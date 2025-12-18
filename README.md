@@ -56,21 +56,24 @@
 **CD Workflow - Terraform Deployment:**
 ![CD Deployment Success](CD_deployment.png)
 
-### Task 7 & 8: ECS Fargate Deployment with CI/CD and CloudWatch Monitoring
+### Task 7 & 8: ECS Fargate Deployment with CI/CD, ALB, and CloudWatch Monitoring
 - ✓ Deployed Strapi on AWS ECS Fargate (serverless containers)
 - ✓ Infrastructure managed entirely via Terraform
 - ✓ Automated CI/CD pipeline with GitHub Actions
 - ✓ Docker images automatically built, tagged, and pushed to ECR
 - ✓ ECS task definitions automatically updated on code push
+- ✓ **Application Load Balancer (ALB)** for high availability and traffic management
+- ✓ Multi-AZ deployment with automatic health checks
 - ✓ CloudWatch Logs for application logging
 - ✓ CloudWatch Container Insights for metrics (CPU, Memory, Network)
-- ✓ CloudWatch Dashboard with real-time monitoring
-- ✓ CloudWatch Alarms for high CPU, memory, and task health
-- ✓ Cost-optimized architecture (~$20/month with monitoring)
+- ✓ CloudWatch Dashboard with 8 widgets (4 ECS + 4 ALB metrics)
+- ✓ CloudWatch Alarms for CPU, memory, task health, ALB health, and response time
+- ✓ Production-ready architecture with zero-downtime deployments
+- ✓ Cost-optimized architecture (~$40/month with ALB and monitoring)
 - ✓ Complete automation - zero manual deployment steps
 - ✓ See: `ecs-fargate/` and `.github/workflows/ecs-ci.yml`
 
-**Live Deployment**: http://3.110.99.188:1337/admin  
+**Live Deployment**: http://arman-strapi-ecs-alb-1399885571.ap-south-1.elb.amazonaws.com/admin  
 **Repository**: https://github.com/Arman-Bisht/strapi-cloudwatch-terraform
 
 ---
@@ -136,17 +139,20 @@ Script-Smiths/
 │       ├── terraform.yml               # Task 6: CD workflow
 │       ├── ecs-ci.yml                  # Task 7: ECS CI/CD workflow
 │       └── ecs-cd.yml                  # Task 7: Manual deployment
-├── ecs-fargate/                        # Task 7 & 8: ECS Fargate with CloudWatch
+├── ecs-fargate/                        # Task 7 & 8: ECS Fargate with ALB & CloudWatch
 │   ├── Dockerfile                      # Strapi container image
 │   ├── package.json                    # Application dependencies
 │   ├── config/                         # Strapi configuration
 │   ├── src/                            # Application code
 │   ├── README.md                       # Deployment documentation
 │   ├── TASK8_CLOUDWATCH.md            # CloudWatch monitoring guide
+│   ├── ALB_IMPLEMENTATION.md          # ALB setup documentation
+│   ├── LOOM_SCRIPT.md                 # Video presentation script
 │   └── terraform/                      # ECS infrastructure
 │       ├── main.tf                     # Provider & backend
 │       ├── ecr.tf                      # Container registry
 │       ├── ecs.tf                      # Fargate cluster & service
+│       ├── alb.tf                      # Application Load Balancer
 │       ├── iam.tf                      # Permissions & roles
 │       ├── security_groups.tf          # Network security
 │       ├── cloudwatch.tf               # Monitoring & alarms

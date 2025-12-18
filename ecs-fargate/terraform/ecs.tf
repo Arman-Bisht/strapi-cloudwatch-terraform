@@ -63,5 +63,14 @@ resource "aws_ecs_service" "strapi" {
     assign_public_ip = true
   }
 
-  depends_on = [aws_iam_role_policy_attachment.ecs_task_execution]
+  load_balancer {
+    target_group_arn = aws_lb_target_group.strapi.arn
+    container_name   = "strapi"
+    container_port   = 1337
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.ecs_task_execution,
+    aws_lb_listener.http
+  ]
 }

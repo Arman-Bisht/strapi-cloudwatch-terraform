@@ -15,9 +15,19 @@ output "ecs_service_name" {
   value       = aws_ecs_service.strapi.name
 }
 
+output "alb_dns_name" {
+  description = "Application Load Balancer DNS name"
+  value       = aws_lb.main.dns_name
+}
+
+output "application_url" {
+  description = "Application URL"
+  value       = "http://${aws_lb.main.dns_name}"
+}
+
 output "access_instructions" {
   description = "How to access the application"
-  value       = "Get task public IP from ECS console or use AWS CLI to find running tasks"
+  value       = "Access the application at: http://${aws_lb.main.dns_name}"
 }
 
 # CloudWatch Outputs
@@ -39,8 +49,10 @@ output "cloudwatch_dashboard_url" {
 output "cloudwatch_alarms" {
   description = "CloudWatch Alarms created"
   value = {
-    cpu_alarm    = aws_cloudwatch_metric_alarm.cpu_high.alarm_name
-    memory_alarm = aws_cloudwatch_metric_alarm.memory_high.alarm_name
-    task_alarm   = aws_cloudwatch_metric_alarm.task_count_low.alarm_name
+    cpu_alarm          = aws_cloudwatch_metric_alarm.cpu_high.alarm_name
+    memory_alarm       = aws_cloudwatch_metric_alarm.memory_high.alarm_name
+    task_alarm         = aws_cloudwatch_metric_alarm.task_count_low.alarm_name
+    alb_unhealthy_alarm = aws_cloudwatch_metric_alarm.alb_unhealthy_hosts.alarm_name
+    alb_response_alarm  = aws_cloudwatch_metric_alarm.alb_target_response_time.alarm_name
   }
 }

@@ -95,6 +95,73 @@ resource "aws_cloudwatch_dashboard" "ecs_strapi" {
           region = var.aws_region
           title  = "Network In/Out (Bytes)"
         }
+      },
+      {
+        type = "metric"
+        x    = 0
+        y    = 12
+        width = 12
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", aws_lb.main.arn_suffix, { stat = "Sum", label = "Total Requests" }]
+          ]
+          period = 300
+          stat   = "Sum"
+          region = var.aws_region
+          title  = "ALB Request Count"
+        }
+      },
+      {
+        type = "metric"
+        x    = 12
+        y    = 12
+        width = 12
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", aws_lb.main.arn_suffix, { stat = "Average", label = "Response Time" }]
+          ]
+          period = 300
+          stat   = "Average"
+          region = var.aws_region
+          title  = "ALB Response Time (seconds)"
+        }
+      },
+      {
+        type = "metric"
+        x    = 0
+        y    = 18
+        width = 12
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/ApplicationELB", "HealthyHostCount", "TargetGroup", aws_lb_target_group.strapi.arn_suffix, "LoadBalancer", aws_lb.main.arn_suffix, { stat = "Average", label = "Healthy" }],
+            [".", "UnHealthyHostCount", ".", ".", ".", ".", { stat = "Average", label = "Unhealthy" }]
+          ]
+          period = 60
+          stat   = "Average"
+          region = var.aws_region
+          title  = "ALB Target Health"
+        }
+      },
+      {
+        type = "metric"
+        x    = 12
+        y    = 18
+        width = 12
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/ApplicationELB", "HTTPCode_Target_2XX_Count", "LoadBalancer", aws_lb.main.arn_suffix, { stat = "Sum", label = "2XX Success" }],
+            [".", "HTTPCode_Target_4XX_Count", ".", ".", { stat = "Sum", label = "4XX Client Error" }],
+            [".", "HTTPCode_Target_5XX_Count", ".", ".", { stat = "Sum", label = "5XX Server Error" }]
+          ]
+          period = 300
+          stat   = "Sum"
+          region = var.aws_region
+          title  = "ALB HTTP Response Codes"
+        }
       }
     ]
   })
