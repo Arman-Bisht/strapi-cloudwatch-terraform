@@ -56,12 +56,13 @@
 **CD Workflow - Terraform Deployment:**
 ![CD Deployment Success](CD_deployment.png)
 
-### Task 7 & 8: ECS Fargate Deployment with CI/CD, ALB, and CloudWatch Monitoring
-- ✓ Deployed Strapi on AWS ECS Fargate (serverless containers)
+### Task 7, 8 & 9: ECS Fargate Spot with CI/CD, ALB, and CloudWatch Monitoring
+- ✓ Deployed Strapi on AWS ECS Fargate Spot (70% cost savings)
 - ✓ Infrastructure managed entirely via Terraform
 - ✓ Automated CI/CD pipeline with GitHub Actions
 - ✓ Docker images automatically built, tagged, and pushed to ECR
 - ✓ ECS task definitions automatically updated on code push
+- ✓ **Fargate Spot** with automatic fallback to regular Fargate
 - ✓ **Application Load Balancer (ALB)** for high availability and traffic management
 - ✓ Multi-AZ deployment with automatic health checks
 - ✓ CloudWatch Logs for application logging
@@ -69,7 +70,7 @@
 - ✓ CloudWatch Dashboard with 8 widgets (4 ECS + 4 ALB metrics)
 - ✓ CloudWatch Alarms for CPU, memory, task health, ALB health, and response time
 - ✓ Production-ready architecture with zero-downtime deployments
-- ✓ Cost-optimized architecture (~$40/month with ALB and monitoring)
+- ✓ Highly cost-optimized architecture (~$33/month with Spot, ALB, and monitoring)
 - ✓ Complete automation - zero manual deployment steps
 - ✓ See: `ecs-fargate/` and `.github/workflows/ecs-ci.yml`
 
@@ -139,7 +140,7 @@ Script-Smiths/
 │       ├── terraform.yml               # Task 6: CD workflow
 │       ├── ecs-ci.yml                  # Task 7: ECS CI/CD workflow
 │       └── ecs-cd.yml                  # Task 7: Manual deployment
-├── ecs-fargate/                        # Task 7 & 8: ECS Fargate with ALB & CloudWatch
+├── ecs-fargate/                        # Task 7, 8 & 9: ECS Fargate Spot with ALB & CloudWatch
 │   ├── Dockerfile                      # Strapi container image
 │   ├── package.json                    # Application dependencies
 │   ├── config/                         # Strapi configuration
@@ -147,11 +148,12 @@ Script-Smiths/
 │   ├── README.md                       # Deployment documentation
 │   ├── TASK8_CLOUDWATCH.md            # CloudWatch monitoring guide
 │   ├── ALB_IMPLEMENTATION.md          # ALB setup documentation
+│   ├── FARGATE_SPOT.md                # Fargate Spot implementation guide
 │   ├── LOOM_SCRIPT.md                 # Video presentation script
 │   └── terraform/                      # ECS infrastructure
 │       ├── main.tf                     # Provider & backend
 │       ├── ecr.tf                      # Container registry
-│       ├── ecs.tf                      # Fargate cluster & service
+│       ├── ecs.tf                      # Fargate Spot cluster & service
 │       ├── alb.tf                      # Application Load Balancer
 │       ├── iam.tf                      # Permissions & roles
 │       ├── security_groups.tf          # Network security
@@ -186,7 +188,7 @@ Script-Smiths/
 - **Nginx**: Reverse proxy
 - **Terraform**: Infrastructure as Code
 - **AWS EC2**: Cloud deployment (Task 5-6)
-- **AWS ECS Fargate**: Serverless containers (Task 7-8)
+- **AWS ECS Fargate Spot**: Serverless containers with 70% cost savings (Task 7-9)
 - **AWS ECR**: Container registry
 - **AWS CloudWatch**: Logging, metrics, dashboards, and alarms (Task 8)
 - **GitHub Actions**: CI/CD automation

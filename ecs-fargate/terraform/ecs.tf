@@ -9,6 +9,19 @@ resource "aws_ecs_cluster" "main" {
   }
 }
 
+# Cluster Capacity Providers for Fargate Spot
+resource "aws_ecs_cluster_capacity_providers" "main" {
+  cluster_name = aws_ecs_cluster.main.name
+
+  capacity_providers = ["FARGATE_SPOT", "FARGATE"]
+
+  default_capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 100
+    base              = 0
+  }
+}
+
 resource "aws_ecs_task_definition" "strapi" {
   family                   = "${var.project_name}-task"
   network_mode             = "awsvpc"
@@ -55,7 +68,20 @@ resource "aws_ecs_service" "strapi" {
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.strapi.arn
   desired_count   = var.app_count
-  launch_type     = "FARGATE"
+
+  # Use capacity provider strategy instead of launch_type
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 100
+    base              = 0
+  }
+
+  # Fallback to regular Fargate if Spot is unavailable
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 0
+    base              = 0
+  }
 
   network_configuration {
     security_groups  = [aws_security_group.ecs_tasks.id]
@@ -71,6 +97,7 @@ resource "aws_ecs_service" "strapi" {
 
   depends_on = [
     aws_iam_role_policy_attachment.ecs_task_execution,
-    aws_lb_listener.http
+    aws_lb_listener.http,
+    aws_ecs_cluster_capacity_providers.main
   ]
 }

@@ -40,6 +40,10 @@ resource "aws_lb" "main" {
   tags = {
     Name = "${var.project_name}-alb"
   }
+
+  lifecycle {
+    ignore_changes = [subnets]
+  }
 }
 
 # Target Group
