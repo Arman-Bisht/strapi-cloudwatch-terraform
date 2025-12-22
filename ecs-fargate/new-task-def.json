@@ -1,0 +1,66 @@
+{
+    "family": "arman-strapi-ecs-task",
+    "taskRoleArn": "arn:aws:iam::301782007642:role/arman-strapi-ecs-ecs-task-role",
+    "executionRoleArn": "arn:aws:iam::301782007642:role/arman-strapi-ecs-ecs-task-execution-role",
+    "networkMode": "awsvpc",
+    "requiresCompatibilities": ["FARGATE"],
+    "cpu": "512",
+    "memory": "1024",
+    "containerDefinitions": [
+        {
+            "name": "strapi",
+            "image": "301782007642.dkr.ecr.ap-south-1.amazonaws.com/arman-strapi-fargate:v2",
+            "cpu": 0,
+            "portMappings": [
+                {
+                    "containerPort": 1337,
+                    "hostPort": 1337,
+                    "protocol": "tcp"
+                }
+            ],
+            "essential": true,
+            "environment": [
+                {
+                    "name": "API_TOKEN_SALT",
+                    "value": "tobemodified"
+                },
+                {
+                    "name": "APP_KEYS",
+                    "value": "toBeModified1,toBeModified2"
+                },
+                {
+                    "name": "PORT",
+                    "value": "1337"
+                },
+                {
+                    "name": "JWT_SECRET",
+                    "value": "tobemodified"
+                },
+                {
+                    "name": "ADMIN_JWT_SECRET",
+                    "value": "tobemodified"
+                },
+                {
+                    "name": "HOST",
+                    "value": "0.0.0.0"
+                },
+                {
+                    "name": "NODE_ENV",
+                    "value": "production"
+                },
+                {
+                    "name": "TRANSFER_TOKEN_SALT",
+                    "value": "tobemodified"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/strapi",
+                    "awslogs-region": "ap-south-1",
+                    "awslogs-stream-prefix": "ecs/strapi"
+                }
+            }
+        }
+    ]
+}

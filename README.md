@@ -74,7 +74,25 @@
 - ✓ Complete automation - zero manual deployment steps
 - ✓ See: `ecs-fargate/` and `.github/workflows/ecs-ci.yml`
 
-**Live Deployment**: http://arman-strapi-ecs-alb-1399885571.ap-south-1.elb.amazonaws.com/admin  
+### Task 10: Blue/Green Deployment with AWS CodeDeploy
+- ✓ Implemented Blue/Green deployment strategy for zero-downtime updates
+- ✓ Configured AWS CodeDeploy with ECS integration
+- ✓ Created Blue and Green target groups for traffic switching
+- ✓ Deployed CodeDeploy application and deployment group
+- ✓ **Canary Deployment Strategy**: CodeDeployDefault.ECSCanary10Percent5Minutes
+  - 10% traffic shifted to new version initially
+  - 5-minute monitoring period before full rollout
+  - Automatic rollback on failure or alarm triggers
+- ✓ CloudWatch alarms integrated for automatic rollback
+- ✓ ECS service configured with CODE_DEPLOY controller
+- ✓ Load balancer info with target_group_pair_info for ECS
+- ✓ IAM roles and policies for CodeDeploy ECS permissions
+- ✓ Successfully tested Blue/Green deployment (Deployment ID: d-DN6B7QROF)
+- ✓ Production-ready with instant rollback capability
+- ✓ See: `ecs-fargate/BLUE_GREEN_DEPLOYMENT.md` and `ecs-fargate/terraform/codedeploy.tf`
+
+**Live Deployment**: http://arman-strapi-ecs-alb-356414694.ap-south-1.elb.amazonaws.com  
+**Admin Panel**: http://arman-strapi-ecs-alb-356414694.ap-south-1.elb.amazonaws.com/admin  
 **Repository**: https://github.com/Arman-Bisht/strapi-cloudwatch-terraform
 
 ---
@@ -140,7 +158,7 @@ Script-Smiths/
 │       ├── terraform.yml               # Task 6: CD workflow
 │       ├── ecs-ci.yml                  # Task 7: ECS CI/CD workflow
 │       └── ecs-cd.yml                  # Task 7: Manual deployment
-├── ecs-fargate/                        # Task 7, 8 & 9: ECS Fargate Spot with ALB & CloudWatch
+├── ecs-fargate/                        # Task 7, 8, 9 & 10: ECS Fargate with ALB, CloudWatch & Blue/Green
 │   ├── Dockerfile                      # Strapi container image
 │   ├── package.json                    # Application dependencies
 │   ├── config/                         # Strapi configuration
@@ -149,12 +167,17 @@ Script-Smiths/
 │   ├── TASK8_CLOUDWATCH.md            # CloudWatch monitoring guide
 │   ├── ALB_IMPLEMENTATION.md          # ALB setup documentation
 │   ├── FARGATE_SPOT.md                # Fargate Spot implementation guide
-│   ├── LOOM_SCRIPT.md                 # Video presentation script
+│   ├── BLUE_GREEN_DEPLOYMENT.md       # Blue/Green deployment guide
+│   ├── LOOM_SCRIPT_3MIN.md            # Video presentation script
+│   ├── appspec.yaml                    # CodeDeploy application specification
+│   ├── deployment.json                 # CodeDeploy deployment configuration
+│   ├── new-task-def.json              # Updated ECS task definition
 │   └── terraform/                      # ECS infrastructure
 │       ├── main.tf                     # Provider & backend
 │       ├── ecr.tf                      # Container registry
-│       ├── ecs.tf                      # Fargate Spot cluster & service
-│       ├── alb.tf                      # Application Load Balancer
+│       ├── ecs.tf                      # Fargate cluster & service with Blue/Green
+│       ├── alb.tf                      # Application Load Balancer with dual target groups
+│       ├── codedeploy.tf               # Blue/Green deployment with CodeDeploy
 │       ├── iam.tf                      # Permissions & roles
 │       ├── security_groups.tf          # Network security
 │       ├── cloudwatch.tf               # Monitoring & alarms
