@@ -136,13 +136,15 @@ resource "aws_cloudwatch_dashboard" "ecs_strapi" {
         height = 6
         properties = {
           metrics = [
-            ["AWS/ApplicationELB", "HealthyHostCount", "TargetGroup", aws_lb_target_group.strapi.arn_suffix, "LoadBalancer", aws_lb.main.arn_suffix, { stat = "Average", label = "Healthy" }],
-            [".", "UnHealthyHostCount", ".", ".", ".", ".", { stat = "Average", label = "Unhealthy" }]
+            ["AWS/ApplicationELB", "HealthyHostCount", "TargetGroup", aws_lb_target_group.blue.arn_suffix, "LoadBalancer", aws_lb.main.arn_suffix, { stat = "Average", label = "Blue Healthy" }],
+            [".", "UnHealthyHostCount", ".", ".", ".", ".", { stat = "Average", label = "Blue Unhealthy" }],
+            [".", "HealthyHostCount", "TargetGroup", aws_lb_target_group.green.arn_suffix, "LoadBalancer", aws_lb.main.arn_suffix, { stat = "Average", label = "Green Healthy" }],
+            [".", "UnHealthyHostCount", ".", ".", ".", ".", { stat = "Average", label = "Green Unhealthy" }]
           ]
           period = 60
           stat   = "Average"
           region = var.aws_region
-          title  = "ALB Target Health"
+          title  = "ALB Target Health (Blue/Green)"
         }
       },
       {
