@@ -1,4 +1,4 @@
-name: Task 11 - Simple Blue/Green Deploy
+name: Task 11 - ECS Blue/Green Deployment FINAL
 
 on:
   push:
