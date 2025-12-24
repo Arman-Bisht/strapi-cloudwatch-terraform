@@ -68,30 +68,26 @@ jobs:
           
           # 4. Create AppSpec file (Standard spaces and fixed indentation)
           echo "Creating AppSpec file..."
-          cat > appspec.yaml << EOF
-version: 0.0
-Resources:
-  - TargetService:
-      Type: AWS::ECS::Service
-      Properties:
-        TaskDefinition: "${NEW_TASK_ARN}"
-        LoadBalancerInfo:
-          ContainerName: "strapi"
-          ContainerPort: 1337
-EOF
+          echo "version: 0.0" > appspec.yaml
+          echo "Resources:" >> appspec.yaml
+          echo "  - TargetService:" >> appspec.yaml
+          echo "      Type: AWS::ECS::Service" >> appspec.yaml
+          echo "      Properties:" >> appspec.yaml
+          echo "        TaskDefinition: \"${NEW_TASK_ARN}\"" >> appspec.yaml
+          echo "        LoadBalancerInfo:" >> appspec.yaml
+          echo "          ContainerName: \"strapi\"" >> appspec.yaml
+          echo "          ContainerPort: 1337" >> appspec.yaml
           
           # 5. Create CodeDeploy deployment JSON payload
           echo "Creating CodeDeploy deployment revision..."
           APPSPEC_B64=$(cat appspec.yaml | base64 -w 0)
           
-          cat > revision.json << EOF
-{
-  "revisionType": "AppSpecContent",
-  "appSpecContent": {
-    "content": "${APPSPEC_B64}"
-  }
-}
-EOF
+          echo "{" > revision.json
+          echo "  \"revisionType\": \"AppSpecContent\"," >> revision.json
+          echo "  \"appSpecContent\": {" >> revision.json
+          echo "    \"content\": \"${APPSPEC_B64}\"" >> revision.json
+          echo "  }" >> revision.json
+          echo "}" >> revision.json
           
           # 6. Start CodeDeploy
           echo "Starting deployment..."
