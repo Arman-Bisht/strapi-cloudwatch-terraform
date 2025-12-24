@@ -166,6 +166,7 @@ jobs:
           TASK_DEF_ARN="${{ steps.register-task-def.outputs.task_definition_arn }}"
           CONTAINER_NAME="${{ env.CONTAINER_NAME }}"
           
+          # Create AppSpec YAML file
           cat > appspec.yaml << EOF
 version: 0.0
 Resources:
@@ -182,7 +183,11 @@ EOF
           cat appspec.yaml
           
           # Validate YAML syntax
-          python3 -c "import yaml; yaml.safe_load(open('appspec.yaml'))" && echo "✅ AppSpec YAML is valid" || echo "❌ AppSpec YAML is invalid"
+          if python3 -c "import yaml; yaml.safe_load(open('appspec.yaml'))" 2>/dev/null; then
+            echo "✅ AppSpec YAML is valid"
+          else
+            echo "❌ AppSpec YAML is invalid"
+          fi
 
       - name: Create deployment package
         run: |
