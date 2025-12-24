@@ -1,7 +1,7 @@
 {
   "name": "strapi-ecs-fargate",
   "version": "1.0.0",
-  "description": "Strapi application deployed on AWS ECS Fargate",
+  "description": "Strapi application with Task 11 GitHub Actions Blue/Green deployment pipeline",
   "scripts": {
     "develop": "strapi develop",
     "start": "strapi start",
