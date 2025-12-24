@@ -1,0 +1,524 @@
+# Task 11: GitHub Actions Workflow for Blue/Green ECS Deployment with CodeDeploy
+# This workflow handles:
+# 1. Build and push Docker image to ECR with commit SHA tag
+# 2. Update ECS Task Definition dynamically
+# 3. Trigger AWS CodeDeploy Blue/Green deployment
+# 4. Monitor deployment status and handle rollback
+
+name: ECS Blue/Green Deployment
+
+on:
+  push:
+    branches:
+      - main
+      - Arman_Bisht_v2
+    paths:
+      - 'ecs-fargate/**'
+      - '.github/workflows/ecs-blue-green-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deployment even if no changes detected'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: arman-strapi-fargate
+  ECS_CLUSTER: arman-strapi-ecs-cluster
+  ECS_SERVICE: arman-strapi-ecs-service
+  ECS_TASK_DEFINITION: arman-strapi-ecs-task
+  CODEDEPLOY_APPLICATION: arman-strapi-ecs-codedeploy-app
+  CODEDEPLOY_DEPLOYMENT_GROUP: arman-strapi-ecs-deployment-group
+  CONTAINER_NAME: strapi
+
+jobs:
+  # Job 1: Build and Push Docker Image
+  build-and-push:
+    name: Build Docker Image and Push to ECR
+    runs-on: ubuntu-latest
+    
+    outputs:
+      image_tag: ${{ steps.image-info.outputs.image_tag }}
+      image_uri: ${{ steps.image-info.outputs.image_uri }}
+      short_sha: ${{ steps.image-info.outputs.short_sha }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
+        working-directory: ecs-fargate
+        run: |
+          echo "Building Docker image with tag: ${{ github.sha }}"
+          docker build -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }} .
+          docker tag ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }} \
+                     ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+
+      - name: Push Docker image to ECR
+        run: |
+          echo "Pushing Docker image to ECR..."
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+
+      - name: Set image info outputs
+        id: image-info
+        run: |
+          echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "image_uri=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "short_sha=${GITHUB_SHA:0:8}" >> $GITHUB_OUTPUT
+
+      - name: Build Summary
+        run: |
+          echo "### 🐳 Docker Image Built and Pushed Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Image Tag** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Short SHA** | \`${{ steps.image-info.outputs.short_sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Image URI** | \`${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Repository** | \`${{ env.ECR_REPOSITORY }}\` |" >> $GITHUB_STEP_SUMMARY
+
+  # Job 2: Update Task Definition and Deploy with CodeDeploy
+  deploy:
+    name: Blue/Green Deployment with CodeDeploy
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    
+    outputs:
+      deployment_id: ${{ steps.codedeploy.outputs.deployment_id }}
+      alb_url: ${{ steps.get-alb.outputs.alb_url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get ALB DNS Name
+        id: get-alb
+        run: |
+          ALB_DNS=$(aws elbv2 describe-load-balancers \
+            --names arman-strapi-ecs-alb \
+            --query 'LoadBalancers[0].DNSName' \
+            --output text 2>/dev/null || echo "ALB not found")
+          echo "alb_url=http://${ALB_DNS}" >> $GITHUB_OUTPUT
+          echo "ALB URL: http://${ALB_DNS}"
+
+      - name: Download current task definition
+        run: |
+          echo "Downloading current task definition..."
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.ECS_TASK_DEFINITION }} \
+            --query taskDefinition > current-task-definition.json
+          
+          echo "Current task definition downloaded successfully"
+          cat current-task-definition.json | jq '.containerDefinitions[0].image'
+
+      - name: Create new task definition with updated image
+        run: |
+          echo "Creating new task definition with image: ${{ needs.build-and-push.outputs.image_uri }}"
+          
+          # Update the image in the task definition
+          jq --arg IMAGE "${{ needs.build-and-push.outputs.image_uri }}" \
+             '.containerDefinitions[0].image = $IMAGE' \
+             current-task-definition.json > updated-task-definition.json
+          
+          # Remove fields that shouldn't be in the registration request
+          jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .placementConstraints, .compatibilities, .registeredAt, .registeredBy)' \
+             updated-task-definition.json > new-task-definition.json
+          
+          echo "New task definition created:"
+          cat new-task-definition.json | jq '.containerDefinitions[0].image'
+
+      - name: Register new task definition
+        id: register-task-def
+        run: |
+          echo "Registering new task definition..."
+          TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://new-task-definition.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+          
+          echo "task_definition_arn=${TASK_DEF_ARN}" >> $GITHUB_OUTPUT
+          echo "New task definition registered: ${TASK_DEF_ARN}"
+
+      - name: Create AppSpec for CodeDeploy
+        run: |
+          echo "Creating AppSpec file for CodeDeploy..."
+          TASK_DEF_ARN="${{ steps.register-task-def.outputs.task_definition_arn }}"
+          CONTAINER_NAME="${{ env.CONTAINER_NAME }}"
+          
+          # Create AppSpec YAML file
+          cat > appspec.yaml << EOF
+version: 0.0
+Resources:
+  - TargetService:
+      Type: AWS::ECS::Service
+      Properties:
+        TaskDefinition: "${TASK_DEF_ARN}"
+        LoadBalancerInfo:
+          ContainerName: "${CONTAINER_NAME}"
+          ContainerPort: 1337
+EOF
+          
+          echo "AppSpec file created:"
+          cat appspec.yaml
+          
+          # Validate YAML syntax
+          if python3 -c "import yaml; yaml.safe_load(open('appspec.yaml'))" 2>/dev/null; then
+            echo "✅ AppSpec YAML is valid"
+          else
+            echo "❌ AppSpec YAML is invalid"
+          fi
+
+      - name: Create deployment package
+        run: |
+          echo "Creating deployment package..."
+          mkdir -p deployment-package
+          cp appspec.yaml deployment-package/
+          cp new-task-definition.json deployment-package/
+          
+          # Create deployment info file
+          cat > deployment-package/deployment-info.json << EOF
+          {
+            "deploymentId": "github-${{ github.run_number }}-${{ needs.build-and-push.outputs.short_sha }}",
+            "imageTag": "${{ needs.build-and-push.outputs.image_tag }}",
+            "imageUri": "${{ needs.build-and-push.outputs.image_uri }}",
+            "commitSha": "${{ github.sha }}",
+            "runNumber": "${{ github.run_number }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+
+      - name: Debug AWS Configuration
+        run: |
+          echo "Checking AWS configuration..."
+          aws sts get-caller-identity
+          echo "Listing CodeDeploy applications..."
+          aws deploy list-applications --region ${{ env.AWS_REGION }}
+          echo "Checking ECS cluster..."
+          aws ecs describe-clusters --clusters ${{ env.ECS_CLUSTER }} --region ${{ env.AWS_REGION }}
+
+      - name: Trigger CodeDeploy Blue/Green Deployment
+        id: codedeploy
+        run: |
+          echo "Starting CodeDeploy Blue/Green deployment..."
+          
+          # Base64 encode the AppSpec content
+          APPSPEC_CONTENT=$(cat appspec.yaml | base64 -w 0)
+          
+          echo "AppSpec content (base64): ${APPSPEC_CONTENT:0:100}..."
+          
+          # Create revision JSON with proper structure
+          cat > revision.json << EOF
+{
+  "revisionType": "AppSpecContent",
+  "appSpecContent": {
+    "content": "${APPSPEC_CONTENT}"
+  }
+}
+EOF
+          
+          echo "Created revision JSON:"
+          cat revision.json
+          
+          # Create deployment using AWS CLI with JSON file
+          DEPLOYMENT_ID=$(aws deploy create-deployment \
+            --application-name ${{ env.CODEDEPLOY_APPLICATION }} \
+            --deployment-group-name ${{ env.CODEDEPLOY_DEPLOYMENT_GROUP }} \
+            --description "GitHub Actions Blue/Green deployment - Commit: ${{ needs.build-and-push.outputs.short_sha }}" \
+            --revision file://revision.json \
+            --query 'deploymentId' \
+            --output text)
+          
+          echo "deployment_id=${DEPLOYMENT_ID}" >> $GITHUB_OUTPUT
+          echo "CodeDeploy deployment started with ID: ${DEPLOYMENT_ID}"
+
+      - name: Monitor deployment status
+        id: monitor-deployment
+        run: |
+          DEPLOYMENT_ID="${{ steps.codedeploy.outputs.deployment_id }}"
+          echo "Monitoring deployment: ${DEPLOYMENT_ID}"
+          
+          # Check if deployment ID is valid
+          if [ -z "${DEPLOYMENT_ID}" ] || [ "${DEPLOYMENT_ID}" = "None" ]; then
+            echo "❌ No valid deployment ID found. CodeDeploy creation may have failed."
+            echo "deployment_status=FAILED" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          # Wait for deployment to complete (max 20 minutes)
+          TIMEOUT=1200
+          ELAPSED=0
+          INTERVAL=30
+          
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            STATUS=$(aws deploy get-deployment \
+              --deployment-id ${DEPLOYMENT_ID} \
+              --query 'deploymentInfo.status' \
+              --output text)
+            
+            echo "Deployment status: ${STATUS} (${ELAPSED}s elapsed)"
+            
+            case ${STATUS} in
+              "Succeeded")
+                echo "✅ Deployment completed successfully!"
+                echo "deployment_status=SUCCESS" >> $GITHUB_OUTPUT
+                exit 0
+                ;;
+              "Failed"|"Stopped")
+                echo "❌ Deployment failed with status: ${STATUS}"
+                echo "deployment_status=FAILED" >> $GITHUB_OUTPUT
+                
+                # Get failure details
+                aws deploy get-deployment \
+                  --deployment-id ${DEPLOYMENT_ID} \
+                  --query 'deploymentInfo.errorInformation' \
+                  --output table
+                exit 1
+                ;;
+              "InProgress"|"Queued"|"Ready")
+                echo "⏳ Deployment in progress..."
+                sleep ${INTERVAL}
+                ELAPSED=$((ELAPSED + INTERVAL))
+                ;;
+              *)
+                echo "Unknown status: ${STATUS}"
+                sleep ${INTERVAL}
+                ELAPSED=$((ELAPSED + INTERVAL))
+                ;;
+            esac
+          done
+          
+          echo "⏰ Deployment timeout reached (${TIMEOUT}s)"
+          echo "deployment_status=TIMEOUT" >> $GITHUB_OUTPUT
+          exit 1
+
+      - name: Get deployment details
+        if: always()
+        run: |
+          DEPLOYMENT_ID="${{ steps.codedeploy.outputs.deployment_id }}"
+          echo "Getting deployment details for: ${DEPLOYMENT_ID}"
+          
+          if [ -n "${DEPLOYMENT_ID}" ] && [ "${DEPLOYMENT_ID}" != "None" ]; then
+            aws deploy get-deployment \
+              --deployment-id ${DEPLOYMENT_ID} \
+              --output table
+            
+            # Get deployment events
+            echo "Deployment events:"
+            aws deploy list-deployment-instances \
+              --deployment-id ${DEPLOYMENT_ID} \
+              --output table || echo "No deployment instances found"
+          else
+            echo "No valid deployment ID to get details for"
+          fi
+
+      - name: Deployment Summary
+        if: always()
+        run: |
+          DEPLOYMENT_STATUS="${{ steps.monitor-deployment.outputs.deployment_status }}"
+          
+          echo "### 🚀 Blue/Green Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${DEPLOYMENT_STATUS}" = "SUCCESS" ]; then
+            echo "✅ **Status:** Deployment Successful" >> $GITHUB_STEP_SUMMARY
+          elif [ "${DEPLOYMENT_STATUS}" = "FAILED" ]; then
+            echo "❌ **Status:** Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          elif [ "${DEPLOYMENT_STATUS}" = "TIMEOUT" ]; then
+            echo "⏰ **Status:** Deployment Timeout" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❓ **Status:** Unknown" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Deployment ID** | \`${{ steps.codedeploy.outputs.deployment_id }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Image Tag** | \`${{ needs.build-and-push.outputs.short_sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Task Definition** | \`${{ steps.register-task-def.outputs.task_definition_arn }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **ECS Cluster** | \`${{ env.ECS_CLUSTER }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **ECS Service** | \`${{ env.ECS_SERVICE }}\` |" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.get-alb.outputs.alb_url }}" != "http://ALB not found" ]; then
+            echo "| **Application URL** | [${{ steps.get-alb.outputs.alb_url }}](${{ steps.get-alb.outputs.alb_url }}) |" >> $GITHUB_STEP_SUMMARY
+            echo "| **Admin Panel** | [${{ steps.get-alb.outputs.alb_url }}/admin](${{ steps.get-alb.outputs.alb_url }}/admin) |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Job 3: Post-Deployment Verification and Rollback (if needed)
+  post-deployment:
+    name: Post-Deployment Verification
+    needs: [build-and-push, deploy]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Health Check
+        id: health-check
+        if: needs.deploy.outputs.deployment_id != ''
+        run: |
+          ALB_URL="${{ needs.deploy.outputs.alb_url }}"
+          
+          if [ "${ALB_URL}" = "http://ALB not found" ]; then
+            echo "ALB not found, skipping health check"
+            echo "health_status=SKIPPED" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "Performing health check on: ${ALB_URL}"
+          
+          # Wait for ALB to be ready
+          sleep 60
+          
+          # Perform health check
+          MAX_ATTEMPTS=10
+          ATTEMPT=1
+          
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "Health check attempt ${ATTEMPT}/${MAX_ATTEMPTS}"
+            
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${ALB_URL}" || echo "000")
+            
+            if [ "${HTTP_STATUS}" = "200" ] || [ "${HTTP_STATUS}" = "302" ]; then
+              echo "✅ Health check passed (HTTP ${HTTP_STATUS})"
+              echo "health_status=PASSED" >> $GITHUB_OUTPUT
+              exit 0
+            else
+              echo "❌ Health check failed (HTTP ${HTTP_STATUS})"
+              if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+                echo "health_status=FAILED" >> $GITHUB_OUTPUT
+                exit 1
+              fi
+              sleep 30
+              ATTEMPT=$((ATTEMPT + 1))
+            fi
+          done
+
+      - name: Rollback on Failure
+        if: failure() && needs.deploy.outputs.deployment_id != ''
+        run: |
+          DEPLOYMENT_ID="${{ needs.deploy.outputs.deployment_id }}"
+          echo "Initiating rollback for deployment: ${DEPLOYMENT_ID}"
+          
+          # Stop the current deployment
+          aws deploy stop-deployment \
+            --deployment-id ${DEPLOYMENT_ID} \
+            --auto-rollback-enabled || echo "Failed to stop deployment"
+          
+          echo "Rollback initiated. Check AWS Console for details."
+
+      - name: Final Summary
+        if: always()
+        run: |
+          echo "### 📊 Final Deployment Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.deploy.result }}" = "success" ]; then
+            echo "✅ **Deployment:** Successful" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Deployment:** Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ steps.health-check.outputs.health_status }}" = "PASSED" ]; then
+            echo "✅ **Health Check:** Passed" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.health-check.outputs.health_status }}" = "FAILED" ]; then
+            echo "❌ **Health Check:** Failed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⏭️ **Health Check:** Skipped" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow Run:** [\#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+
+  # Job 4: Cleanup (Optional)
+  cleanup:
+    name: Cleanup Old Resources
+    needs: [deploy, post-deployment]
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Cleanup old task definitions
+        run: |
+          echo "Cleaning up old task definitions (keeping last 5)..."
+          
+          # Get all task definition revisions
+          TASK_DEFS=$(aws ecs list-task-definitions \
+            --family-prefix ${{ env.ECS_TASK_DEFINITION }} \
+            --status ACTIVE \
+            --sort DESC \
+            --query 'taskDefinitionArns[5:]' \
+            --output text)
+          
+          if [ -n "${TASK_DEFS}" ] && [ "${TASK_DEFS}" != "None" ]; then
+            for TASK_DEF in ${TASK_DEFS}; do
+              echo "Deregistering old task definition: ${TASK_DEF}"
+              aws ecs deregister-task-definition \
+                --task-definition ${TASK_DEF} > /dev/null || echo "Failed to deregister ${TASK_DEF}"
+            done
+          else
+            echo "No old task definitions to clean up"
+          fi
+
+      - name: Cleanup old ECR images
+        run: |
+          echo "Cleaning up old ECR images (keeping last 10)..."
+          
+          # Get old images (keep last 10)
+          OLD_IMAGES=$(aws ecr describe-images \
+            --repository-name ${{ env.ECR_REPOSITORY }} \
+            --query 'sort_by(imageDetails,&imagePushedAt)[:-10][?imageDigest!=null].imageDigest' \
+            --output text)
+          
+          if [ -n "${OLD_IMAGES}" ] && [ "${OLD_IMAGES}" != "None" ]; then
+            for DIGEST in ${OLD_IMAGES}; do
+              echo "Deleting old image: ${DIGEST}"
+              aws ecr batch-delete-image \
+                --repository-name ${{ env.ECR_REPOSITORY }} \
+                --image-ids imageDigest=${DIGEST} > /dev/null || echo "Failed to delete ${DIGEST}"
+            done
+          else
+            echo "No old images to clean up"
+          fi
+
+      - name: Cleanup Summary
+        run: |
+          echo "### 🧹 Cleanup Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Old task definitions cleaned up (keeping last 5)" >> $GITHUB_STEP_SUMMARY
+          echo "- Old ECR images cleaned up (keeping last 10)" >> $GITHUB_STEP_SUMMARY
