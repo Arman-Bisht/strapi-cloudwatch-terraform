@@ -91,8 +91,22 @@
 - ✓ Production-ready with instant rollback capability
 - ✓ See: `ecs-fargate/BLUE_GREEN_DEPLOYMENT.md` and `ecs-fargate/terraform/codedeploy.tf`
 
-**Live Deployment**: http://arman-strapi-ecs-alb-356414694.ap-south-1.elb.amazonaws.com  
-**Admin Panel**: http://arman-strapi-ecs-alb-356414694.ap-south-1.elb.amazonaws.com/admin  
+### Task 11: GitHub Actions Blue/Green Deployment Pipeline
+- ✓ Comprehensive GitHub Actions workflow for automated deployments
+- ✓ **Docker Build & Push**: Automated image building with commit SHA tags
+- ✓ **Dynamic Task Definition Updates**: Automatic ECS task definition updates
+- ✓ **CodeDeploy Integration**: Trigger Blue/Green deployments via GitHub Actions
+- ✓ **Deployment Monitoring**: Real-time status tracking with 20-minute timeout
+- ✓ **Health Verification**: Post-deployment health checks on ALB endpoint
+- ✓ **Automatic Rollback**: Rollback on deployment or health check failures
+- ✓ **Resource Cleanup**: Automatic cleanup of old task definitions and ECR images
+- ✓ **Multi-Job Pipeline**: Build → Deploy → Verify → Cleanup
+- ✓ **Comprehensive Reporting**: Detailed deployment summaries and status
+- ✓ **Manual Triggers**: Support for manual deployments via workflow_dispatch
+- ✓ **Cost Optimization**: Keep only last 5 task definitions and 10 ECR images
+- ✓ See: `.github/workflows/ecs-blue-green-deploy.yml` and `ecs-fargate/TASK11_GITHUB_ACTIONS_DEPLOYMENT.md`
+
+**Infrastructure Status**: DESTROYED (No ongoing AWS charges)  
 **Repository**: https://github.com/Arman-Bisht/strapi-cloudwatch-terraform
 
 ---
@@ -156,9 +170,10 @@ Script-Smiths/
 │   └── workflows/
 │       ├── ci.yml                      # Task 6: CI workflow
 │       ├── terraform.yml               # Task 6: CD workflow
-│       ├── ecs-ci.yml                  # Task 7: ECS CI/CD workflow
-│       └── ecs-cd.yml                  # Task 7: Manual deployment
-├── ecs-fargate/                        # Task 7, 8, 9 & 10: ECS Fargate with ALB, CloudWatch & Blue/Green
+│       ├── ecs-ci.yml                  # Task 7: ECS CI/CD workflow (legacy)
+│       ├── ecs-cd.yml                  # Task 7: Manual deployment (legacy)
+│       └── ecs-blue-green-deploy.yml   # Task 11: Blue/Green deployment pipeline
+├── ecs-fargate/                        # Task 7, 8, 9, 10 & 11: ECS Fargate with ALB, CloudWatch, Blue/Green & CI/CD
 │   ├── Dockerfile                      # Strapi container image
 │   ├── package.json                    # Application dependencies
 │   ├── config/                         # Strapi configuration
@@ -168,6 +183,7 @@ Script-Smiths/
 │   ├── ALB_IMPLEMENTATION.md          # ALB setup documentation
 │   ├── FARGATE_SPOT.md                # Fargate Spot implementation guide
 │   ├── BLUE_GREEN_DEPLOYMENT.md       # Blue/Green deployment guide
+│   ├── TASK11_GITHUB_ACTIONS_DEPLOYMENT.md # GitHub Actions pipeline guide
 │   ├── LOOM_SCRIPT_3MIN.md            # Video presentation script
 │   ├── appspec.yaml                    # CodeDeploy application specification
 │   ├── deployment.json                 # CodeDeploy deployment configuration
