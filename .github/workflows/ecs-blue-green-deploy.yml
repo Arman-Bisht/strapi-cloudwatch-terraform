@@ -163,15 +163,18 @@ jobs:
       - name: Create AppSpec for CodeDeploy
         run: |
           echo "Creating AppSpec file for CodeDeploy..."
-          cat > appspec.yaml << 'EOF'
+          TASK_DEF_ARN="${{ steps.register-task-def.outputs.task_definition_arn }}"
+          CONTAINER_NAME="${{ env.CONTAINER_NAME }}"
+          
+          cat > appspec.yaml << EOF
 version: 0.0
 Resources:
   - TargetService:
       Type: AWS::ECS::Service
       Properties:
-        TaskDefinition: "${{ steps.register-task-def.outputs.task_definition_arn }}"
+        TaskDefinition: "${TASK_DEF_ARN}"
         LoadBalancerInfo:
-          ContainerName: "${{ env.CONTAINER_NAME }}"
+          ContainerName: "${CONTAINER_NAME}"
           ContainerPort: 1337
 EOF
           
@@ -220,7 +223,7 @@ EOF
           echo "AppSpec content (base64): ${APPSPEC_CONTENT:0:100}..."
           
           # Create revision JSON with proper structure
-          cat > revision.json << 'EOF'
+          cat > revision.json << EOF
 {
   "revisionType": "AppSpecContent",
   "appSpecContent": {
