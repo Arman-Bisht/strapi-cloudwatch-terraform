@@ -66,28 +66,30 @@ jobs:
             --output text)
           echo "New task definition: ${NEW_TASK_ARN}"
           
-          # 4. Create AppSpec file (Standard spaces and fixed indentation)
+          # 4. Create AppSpec file using printf for clean output
           echo "Creating AppSpec file..."
-          echo "version: 0.0" > appspec.yaml
-          echo "Resources:" >> appspec.yaml
-          echo "  - TargetService:" >> appspec.yaml
-          echo "      Type: AWS::ECS::Service" >> appspec.yaml
-          echo "      Properties:" >> appspec.yaml
-          echo "        TaskDefinition: \"${NEW_TASK_ARN}\"" >> appspec.yaml
-          echo "        LoadBalancerInfo:" >> appspec.yaml
-          echo "          ContainerName: \"strapi\"" >> appspec.yaml
-          echo "          ContainerPort: 1337" >> appspec.yaml
+          printf 'version: 0.0\n' > appspec.yaml
+          printf 'Resources:\n' >> appspec.yaml
+          printf '  - TargetService:\n' >> appspec.yaml
+          printf '      Type: AWS::ECS::Service\n' >> appspec.yaml
+          printf '      Properties:\n' >> appspec.yaml
+          printf '        TaskDefinition: %s\n' "${NEW_TASK_ARN}" >> appspec.yaml
+          printf '        LoadBalancerInfo:\n' >> appspec.yaml
+          printf '          ContainerName: strapi\n' >> appspec.yaml
+          printf '          ContainerPort: 1337\n' >> appspec.yaml
           
-          # 5. Create CodeDeploy deployment JSON payload
+          echo "=== AppSpec Content ==="
+          cat appspec.yaml
+          echo "=== End AppSpec ==="
+          
+          # 5. Create revision using jq for proper JSON encoding
           echo "Creating CodeDeploy deployment revision..."
-          APPSPEC_B64=$(cat appspec.yaml | base64 -w 0)
+          APPSPEC_CONTENT=$(cat appspec.yaml)
+          jq -n --arg content "$APPSPEC_CONTENT" '{revisionType: "AppSpecContent", appSpecContent: {content: $content}}' > revision.json
           
-          echo "{" > revision.json
-          echo "  \"revisionType\": \"AppSpecContent\"," >> revision.json
-          echo "  \"appSpecContent\": {" >> revision.json
-          echo "    \"content\": \"${APPSPEC_B64}\"" >> revision.json
-          echo "  }" >> revision.json
-          echo "}" >> revision.json
+          echo "=== Revision JSON ==="
+          cat revision.json
+          echo "=== End Revision ==="
           
           # 6. Start CodeDeploy
           echo "Starting deployment..."
