@@ -212,9 +212,7 @@ jobs:
             --application-name ${{ env.CODEDEPLOY_APPLICATION }} \
             --deployment-group-name ${{ env.CODEDEPLOY_DEPLOYMENT_GROUP }} \
             --description "GitHub Actions Blue/Green deployment - Commit: ${{ needs.build-and-push.outputs.short_sha }}" \
-            --revision revisionType=AppSpecContent,appSpecContent='{
-              "content": "'"$(cat appspec.yaml | base64 -w 0)"'"
-            }' \
+            --revision revisionType=AppSpecContent,appSpecContent="{\"content\":\"$(cat appspec.yaml | base64 -w 0)\"}" \
             --query 'deploymentId' \
             --output text)
           
@@ -226,6 +224,13 @@ jobs:
         run: |
           DEPLOYMENT_ID="${{ steps.codedeploy.outputs.deployment_id }}"
           echo "Monitoring deployment: ${DEPLOYMENT_ID}"
+          
+          # Check if deployment ID is valid
+          if [ -z "${DEPLOYMENT_ID}" ] || [ "${DEPLOYMENT_ID}" = "None" ]; then
+            echo "❌ No valid deployment ID found. CodeDeploy creation may have failed."
+            echo "deployment_status=FAILED" >> $GITHUB_OUTPUT
+            exit 1
+          fi
           
           # Wait for deployment to complete (max 20 minutes)
           TIMEOUT=1200
@@ -280,15 +285,19 @@ jobs:
           DEPLOYMENT_ID="${{ steps.codedeploy.outputs.deployment_id }}"
           echo "Getting deployment details for: ${DEPLOYMENT_ID}"
           
-          aws deploy get-deployment \
-            --deployment-id ${DEPLOYMENT_ID} \
-            --output table
-          
-          # Get deployment events
-          echo "Deployment events:"
-          aws deploy list-deployment-instances \
-            --deployment-id ${DEPLOYMENT_ID} \
-            --output table || echo "No deployment instances found"
+          if [ -n "${DEPLOYMENT_ID}" ] && [ "${DEPLOYMENT_ID}" != "None" ]; then
+            aws deploy get-deployment \
+              --deployment-id ${DEPLOYMENT_ID} \
+              --output table
+            
+            # Get deployment events
+            echo "Deployment events:"
+            aws deploy list-deployment-instances \
+              --deployment-id ${DEPLOYMENT_ID} \
+              --output table || echo "No deployment instances found"
+          else
+            echo "No valid deployment ID to get details for"
+          fi
 
       - name: Deployment Summary
         if: always()
