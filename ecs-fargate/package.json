@@ -1,7 +1,7 @@
 {
   "name": "strapi-ecs-fargate",
   "version": "1.0.2",
-  "description": "Strapi application with Task 11 GitHub Actions Blue/Green deployment pipeline",
+  "description": "Strapi application with Task 11 GitHub Actions Blue/Green deployment pipeline - Clean workflow test",
   "scripts": {
     "develop": "strapi develop",
     "start": "strapi start",
