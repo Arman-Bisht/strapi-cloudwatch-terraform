@@ -203,6 +203,15 @@ jobs:
           }
           EOF
 
+      - name: Debug AWS Configuration
+        run: |
+          echo "Checking AWS configuration..."
+          aws sts get-caller-identity
+          echo "Listing CodeDeploy applications..."
+          aws deploy list-applications --region ${{ env.AWS_REGION }}
+          echo "Checking ECS cluster..."
+          aws ecs describe-clusters --clusters ${{ env.ECS_CLUSTER }} --region ${{ env.AWS_REGION }}
+
       - name: Trigger CodeDeploy Blue/Green Deployment
         id: codedeploy
         run: |
