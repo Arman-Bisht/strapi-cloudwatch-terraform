@@ -1,0 +1,129 @@
+name: Task 11 - Simple Blue/Green Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'ecs-fargate/**'
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: arman-strapi-fargate
+  ECS_CLUSTER: arman-strapi-ecs-cluster
+  ECS_SERVICE: arman-strapi-ecs-service
+  ECS_TASK_DEFINITION: arman-strapi-ecs-task
+  CODEDEPLOY_APPLICATION: arman-strapi-ecs-codedeploy-app
+  CODEDEPLOY_DEPLOYMENT_GROUP: arman-strapi-ecs-deployment-group
+
+jobs:
+  deploy:
+    name: Deploy to ECS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and Deploy
+        working-directory: ecs-fargate
+        run: |
+          echo "=== Task 11: GitHub Actions Blue/Green Deployment ==="
+          
+          # Build Docker image
+          IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          echo "Building image: ${IMAGE_URI}"
+          docker build -t ${IMAGE_URI} .
+          docker push ${IMAGE_URI}
+          
+          # Get current task definition
+          echo "Getting current task definition..."
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.ECS_TASK_DEFINITION }} \
+            --query taskDefinition > task-def.json
+          
+          # Update image in task definition
+          echo "Updating task definition with new image..."
+          jq --arg IMAGE "${IMAGE_URI}" '.containerDefinitions[0].image = $IMAGE' task-def.json > updated-task-def.json
+          jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .placementConstraints, .compatibilities, .registeredAt, .registeredBy)' updated-task-def.json > new-task-def.json
+          
+          # Register new task definition
+          echo "Registering new task definition..."
+          NEW_TASK_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://new-task-def.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+          echo "New task definition: ${NEW_TASK_ARN}"
+          
+          # Create AppSpec file
+          echo "Creating AppSpec file..."
+          echo 'version: 0.0' > appspec.yaml
+          echo 'Resources:' >> appspec.yaml
+          echo '  - TargetService:' >> appspec.yaml
+          echo '      Type: AWS::ECS::Service' >> appspec.yaml
+          echo '      Properties:' >> appspec.yaml
+          echo "        TaskDefinition: \"${NEW_TASK_ARN}\"" >> appspec.yaml
+          echo '        LoadBalancerInfo:' >> appspec.yaml
+          echo '          ContainerName: "strapi"' >> appspec.yaml
+          echo '          ContainerPort: 1337' >> appspec.yaml
+          
+          echo "AppSpec created:"
+          cat appspec.yaml
+          
+          # Create CodeDeploy deployment
+          echo "Creating CodeDeploy deployment..."
+          APPSPEC_B64=$(cat appspec.yaml | base64 -w 0)
+          
+          echo "{" > revision.json
+          echo '  "revisionType": "AppSpecContent",' >> revision.json
+          echo '  "appSpecContent": {' >> revision.json
+          echo "    \"content\": \"${APPSPEC_B64}\"" >> revision.json
+          echo '  }' >> revision.json
+          echo "}" >> revision.json
+          
+          echo "Starting deployment..."
+          DEPLOYMENT_ID=$(aws deploy create-deployment \
+            --application-name ${{ env.CODEDEPLOY_APPLICATION }} \
+            --deployment-group-name ${{ env.CODEDEPLOY_DEPLOYMENT_GROUP }} \
+            --description "Task 11 deployment - ${{ github.sha }}" \
+            --revision file://revision.json \
+            --query 'deploymentId' \
+            --output text)
+          
+          echo "Deployment ID: ${DEPLOYMENT_ID}"
+          
+          # Monitor deployment
+          echo "Monitoring deployment..."
+          for i in {1..30}; do
+            STATUS=$(aws deploy get-deployment \
+              --deployment-id ${DEPLOYMENT_ID} \
+              --query 'deploymentInfo.status' \
+              --output text)
+            
+            echo "Status: ${STATUS} (${i}/30)"
+            
+            if [ "${STATUS}" = "Succeeded" ]; then
+              echo "✅ Deployment successful!"
+              break
+            elif [ "${STATUS}" = "Failed" ]; then
+              echo "❌ Deployment failed!"
+              aws deploy get-deployment --deployment-id ${DEPLOYMENT_ID} --query 'deploymentInfo.errorInformation'
+              exit 1
+            fi
+            
+            sleep 30
+          done
+          
+          echo "🎉 Task 11 completed successfully!"
