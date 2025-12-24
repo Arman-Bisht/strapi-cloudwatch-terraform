@@ -208,11 +208,25 @@ jobs:
         run: |
           echo "Starting CodeDeploy Blue/Green deployment..."
           
+          # Create revision JSON file
+          APPSPEC_CONTENT=$(cat appspec.yaml | base64 -w 0)
+          cat > revision.json << EOF
+          {
+            "revisionType": "AppSpecContent",
+            "appSpecContent": {
+              "content": "${APPSPEC_CONTENT}"
+            }
+          }
+          EOF
+          
+          echo "Created revision.json:"
+          cat revision.json
+          
           DEPLOYMENT_ID=$(aws deploy create-deployment \
             --application-name ${{ env.CODEDEPLOY_APPLICATION }} \
             --deployment-group-name ${{ env.CODEDEPLOY_DEPLOYMENT_GROUP }} \
             --description "GitHub Actions Blue/Green deployment - Commit: ${{ needs.build-and-push.outputs.short_sha }}" \
-            --revision revisionType=AppSpecContent,appSpecContent="{\"content\":\"$(cat appspec.yaml | base64 -w 0)\"}" \
+            --revision file://revision.json \
             --query 'deploymentId' \
             --output text)
           
