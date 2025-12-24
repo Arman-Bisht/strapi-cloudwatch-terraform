@@ -29,8 +29,8 @@ env:
   ECS_CLUSTER: arman-strapi-ecs-cluster
   ECS_SERVICE: arman-strapi-ecs-service
   ECS_TASK_DEFINITION: arman-strapi-ecs-task
-  CODEDEPLOY_APPLICATION: arman-strapi-codedeploy-app
-  CODEDEPLOY_DEPLOYMENT_GROUP: arman-strapi-deployment-group
+  CODEDEPLOY_APPLICATION: arman-strapi-ecs-codedeploy-app
+  CODEDEPLOY_DEPLOYMENT_GROUP: arman-strapi-ecs-deployment-group
   CONTAINER_NAME: strapi
 
 jobs:
