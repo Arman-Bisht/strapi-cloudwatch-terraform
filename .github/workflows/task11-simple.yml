@@ -42,24 +42,23 @@ jobs:
         run: |
           echo "=== Task 11: GitHub Actions Blue/Green Deployment ==="
           
-          # Build Docker image
+          # 1. Build and Push Docker image
           IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
           echo "Building image: ${IMAGE_URI}"
           docker build -t ${IMAGE_URI} .
           docker push ${IMAGE_URI}
           
-          # Get current task definition
+          # 2. Get current task definition and update image
           echo "Getting current task definition..."
           aws ecs describe-task-definition \
             --task-definition ${{ env.ECS_TASK_DEFINITION }} \
             --query taskDefinition > task-def.json
           
-          # Update image in task definition
-          echo "Updating task definition with new image..."
+          # Update image and strip metadata for registration
           jq --arg IMAGE "${IMAGE_URI}" '.containerDefinitions[0].image = $IMAGE' task-def.json > updated-task-def.json
           jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .placementConstraints, .compatibilities, .registeredAt, .registeredBy)' updated-task-def.json > new-task-def.json
           
-          # Register new task definition
+          # 3. Register new task definition
           echo "Registering new task definition..."
           NEW_TASK_ARN=$(aws ecs register-task-definition \
             --cli-input-json file://new-task-def.json \
@@ -67,37 +66,34 @@ jobs:
             --output text)
           echo "New task definition: ${NEW_TASK_ARN}"
           
-          # Create AppSpec file with correct YAML formatting
+          # 4. Create AppSpec file (Standard spaces and fixed indentation)
           echo "Creating AppSpec file..."
-          cat > appspec.yaml << 'EOF'
+          cat > appspec.yaml << EOF
 version: 0.0
 Resources:
-- TargetService:
-    Type: AWS::ECS::Service
-    Properties:
-      TaskDefinition: "TASK_DEF_PLACEHOLDER"
-      LoadBalancerInfo:
-        ContainerName: "strapi"
-        ContainerPort: 1337
+  - TargetService:
+      Type: AWS::ECS::Service
+      Properties:
+        TaskDefinition: "${NEW_TASK_ARN}"
+        LoadBalancerInfo:
+          ContainerName: "strapi"
+          ContainerPort: 1337
 EOF
           
-          # Replace placeholder with actual task definition ARN
-          sed -i "s|TASK_DEF_PLACEHOLDER|${NEW_TASK_ARN}|g" appspec.yaml
-          
-          echo "AppSpec created:"
-          cat appspec.yaml
-          
-          # Create CodeDeploy deployment
-          echo "Creating CodeDeploy deployment..."
+          # 5. Create CodeDeploy deployment JSON payload
+          echo "Creating CodeDeploy deployment revision..."
           APPSPEC_B64=$(cat appspec.yaml | base64 -w 0)
           
-          echo "{" > revision.json
-          echo '  "revisionType": "AppSpecContent",' >> revision.json
-          echo '  "appSpecContent": {' >> revision.json
-          echo "    \"content\": \"${APPSPEC_B64}\"" >> revision.json
-          echo '  }' >> revision.json
-          echo "}" >> revision.json
+          cat > revision.json << EOF
+{
+  "revisionType": "AppSpecContent",
+  "appSpecContent": {
+    "content": "${APPSPEC_B64}"
+  }
+}
+EOF
           
+          # 6. Start CodeDeploy
           echo "Starting deployment..."
           DEPLOYMENT_ID=$(aws deploy create-deployment \
             --application-name ${{ env.CODEDEPLOY_APPLICATION }} \
@@ -109,20 +105,20 @@ EOF
           
           echo "Deployment ID: ${DEPLOYMENT_ID}"
           
-          # Monitor deployment
+          # 7. Monitor deployment status
           echo "Monitoring deployment..."
-          for i in {1..30}; do
+          for i in {1..40}; do
             STATUS=$(aws deploy get-deployment \
               --deployment-id ${DEPLOYMENT_ID} \
               --query 'deploymentInfo.status' \
               --output text)
             
-            echo "Status: ${STATUS} (${i}/30)"
+            echo "Current Status: ${STATUS} (Check ${i}/40)"
             
             if [ "${STATUS}" = "Succeeded" ]; then
               echo "✅ Deployment successful!"
-              break
-            elif [ "${STATUS}" = "Failed" ]; then
+              exit 0
+            elif [ "${STATUS}" = "Failed" ] || [ "${STATUS}" = "Stopped" ]; then
               echo "❌ Deployment failed!"
               aws deploy get-deployment --deployment-id ${DEPLOYMENT_ID} --query 'deploymentInfo.errorInformation'
               exit 1
@@ -130,5 +126,6 @@ EOF
             
             sleep 30
           done
-          
-          echo "🎉 Task 11 completed successfully!"
+
+          echo "❌ Deployment timed out!"
+          exit 1
