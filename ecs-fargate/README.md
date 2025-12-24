@@ -79,4 +79,4 @@ terraform destroy
 https://github.com/Arman-Bisht/git_workflow_ECS.git
 
 ---
-<!-- Trigger: Dec 24, 2024 - Testing fixed appspec.yaml YAML syntax -->
+<!-- Trigger: Dec 24, 2024 - v2 Testing printf and jq for appspec generation -->
