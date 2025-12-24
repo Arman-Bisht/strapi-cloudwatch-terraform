@@ -220,14 +220,14 @@ jobs:
           echo "AppSpec content (base64): ${APPSPEC_CONTENT:0:100}..."
           
           # Create revision JSON with proper structure
-          cat > revision.json << EOF
-{
-  "revisionType": "AppSpecContent",
-  "appSpecContent": {
-    "content": "${APPSPEC_CONTENT}"
-  }
-}
-EOF
+          cat > revision.json << 'EOF'
+          {
+            "revisionType": "AppSpecContent",
+            "appSpecContent": {
+              "content": "${APPSPEC_CONTENT}"
+            }
+          }
+          EOF
           
           echo "Created revision JSON:"
           cat revision.json
