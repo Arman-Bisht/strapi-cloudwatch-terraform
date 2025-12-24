@@ -126,17 +126,20 @@ jobs:
           echo "Creating AppSpec file for CodeDeploy..."
           TASK_DEF_ARN="${{ steps.register-task-def.outputs.task_definition_arn }}"
           
-          cat > appspec.yaml << EOF
+          cat > appspec.yaml << 'EOF'
 version: 0.0
 Resources:
   - TargetService:
       Type: AWS::ECS::Service
       Properties:
-        TaskDefinition: "${TASK_DEF_ARN}"
+        TaskDefinition: "PLACEHOLDER_TASK_DEF"
         LoadBalancerInfo:
-          ContainerName: "${{ env.CONTAINER_NAME }}"
+          ContainerName: "strapi"
           ContainerPort: 1337
 EOF
+          
+          # Replace placeholder with actual task definition ARN
+          sed -i "s|PLACEHOLDER_TASK_DEF|${TASK_DEF_ARN}|g" appspec.yaml
           
           echo "AppSpec file created:"
           cat appspec.yaml
