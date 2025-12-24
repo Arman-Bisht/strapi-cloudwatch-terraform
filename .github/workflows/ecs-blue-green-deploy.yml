@@ -219,12 +219,25 @@ jobs:
           
           echo "AppSpec content (base64): ${APPSPEC_CONTENT:0:100}..."
           
-          # Create deployment using AWS CLI with proper JSON structure
+          # Create revision JSON with proper structure
+          cat > revision.json << EOF
+{
+  "revisionType": "AppSpecContent",
+  "appSpecContent": {
+    "content": "${APPSPEC_CONTENT}"
+  }
+}
+EOF
+          
+          echo "Created revision JSON:"
+          cat revision.json
+          
+          # Create deployment using AWS CLI with JSON file
           DEPLOYMENT_ID=$(aws deploy create-deployment \
             --application-name ${{ env.CODEDEPLOY_APPLICATION }} \
             --deployment-group-name ${{ env.CODEDEPLOY_DEPLOYMENT_GROUP }} \
             --description "GitHub Actions Blue/Green deployment - Commit: ${{ needs.build-and-push.outputs.short_sha }}" \
-            --revision revisionType=AppSpecContent,appSpecContent="{\"content\":\"${APPSPEC_CONTENT}\"}" \
+            --revision file://revision.json \
             --query 'deploymentId' \
             --output text)
           
