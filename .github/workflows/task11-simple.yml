@@ -69,7 +69,7 @@ jobs:
           
           # Create AppSpec file with correct YAML formatting
           echo "Creating AppSpec file..."
-          cat > appspec.yaml << 'EOF'
+          cat > appspec.yaml << EOF
 version: 0.0
 Resources:
   - TargetService:

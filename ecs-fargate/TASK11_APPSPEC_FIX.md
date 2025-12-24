@@ -22,7 +22,7 @@ Resources:
           ContainerPort: 1337
 ```
 
-**TRIGGER TIMESTAMP**: Heredoc solution deployment - $(date)
+**TRIGGER TIMESTAMP**: YAML syntax fixed - workflow ready for deployment - $(date)
 **STATUS**: Ready for successful Blue/Green deployment! 🚀
 
 ## 🎉 Task 11: GitHub Actions Blue/Green Deployment Pipeline - COMPLETE!
