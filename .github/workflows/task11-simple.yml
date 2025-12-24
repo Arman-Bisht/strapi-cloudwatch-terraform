@@ -69,15 +69,20 @@ jobs:
           
           # Create AppSpec file
           echo "Creating AppSpec file..."
-          echo 'version: 0.0' > appspec.yaml
-          echo 'Resources:' >> appspec.yaml
-          echo '  - TargetService:' >> appspec.yaml
-          echo '      Type: AWS::ECS::Service' >> appspec.yaml
-          echo '      Properties:' >> appspec.yaml
-          echo "        TaskDefinition: \"${NEW_TASK_ARN}\"" >> appspec.yaml
-          echo '        LoadBalancerInfo:' >> appspec.yaml
-          echo '          ContainerName: "strapi"' >> appspec.yaml
-          echo '          ContainerPort: 1337' >> appspec.yaml
+          cat > appspec.yaml << 'APPSPEC_EOF'
+version: 0.0
+Resources:
+  - TargetService:
+      Type: AWS::ECS::Service
+      Properties:
+        TaskDefinition: "TASK_DEF_PLACEHOLDER"
+        LoadBalancerInfo:
+          ContainerName: "strapi"
+          ContainerPort: 1337
+APPSPEC_EOF
+          
+          # Replace placeholder with actual task definition ARN
+          sed -i "s|TASK_DEF_PLACEHOLDER|${NEW_TASK_ARN}|g" appspec.yaml
           
           echo "AppSpec created:"
           cat appspec.yaml
