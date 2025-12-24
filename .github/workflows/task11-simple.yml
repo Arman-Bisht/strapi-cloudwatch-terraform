@@ -69,17 +69,15 @@ jobs:
           
           # Create AppSpec file with proper YAML formatting
           echo "Creating AppSpec file..."
-          {
-            echo "version: 0.0"
-            echo "Resources:"
-            echo "  - TargetService:"
-            echo "      Type: AWS::ECS::Service"
-            echo "      Properties:"
-            echo "        TaskDefinition: \"${NEW_TASK_ARN}\""
-            echo "        LoadBalancerInfo:"
-            echo "          ContainerName: \"strapi\""
-            echo "          ContainerPort: 1337"
-          } > appspec.yaml
+          printf "version: 0.0\n" > appspec.yaml
+          printf "Resources:\n" >> appspec.yaml
+          printf "  - TargetService:\n" >> appspec.yaml
+          printf "      Type: AWS::ECS::Service\n" >> appspec.yaml
+          printf "      Properties:\n" >> appspec.yaml
+          printf "        TaskDefinition: \"%s\"\n" "${NEW_TASK_ARN}" >> appspec.yaml
+          printf "        LoadBalancerInfo:\n" >> appspec.yaml
+          printf "          ContainerName: \"strapi\"\n" >> appspec.yaml
+          printf "          ContainerPort: 1337\n" >> appspec.yaml
           
           echo "AppSpec created:"
           cat appspec.yaml
