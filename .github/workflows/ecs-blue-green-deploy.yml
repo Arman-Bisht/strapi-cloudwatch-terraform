@@ -164,16 +164,16 @@ jobs:
         run: |
           echo "Creating AppSpec file for CodeDeploy..."
           cat > appspec.yaml << 'EOF'
-          version: 0.0
-          Resources:
-            - TargetService:
-                Type: AWS::ECS::Service
-                Properties:
-                  TaskDefinition: "${{ steps.register-task-def.outputs.task_definition_arn }}"
-                  LoadBalancerInfo:
-                    ContainerName: "${{ env.CONTAINER_NAME }}"
-                    ContainerPort: 1337
-          EOF
+version: 0.0
+Resources:
+  - TargetService:
+      Type: AWS::ECS::Service
+      Properties:
+        TaskDefinition: "${{ steps.register-task-def.outputs.task_definition_arn }}"
+        LoadBalancerInfo:
+          ContainerName: "${{ env.CONTAINER_NAME }}"
+          ContainerPort: 1337
+EOF
           
           echo "AppSpec file created:"
           cat appspec.yaml
@@ -221,13 +221,13 @@ jobs:
           
           # Create revision JSON with proper structure
           cat > revision.json << 'EOF'
-          {
-            "revisionType": "AppSpecContent",
-            "appSpecContent": {
-              "content": "${APPSPEC_CONTENT}"
-            }
-          }
-          EOF
+{
+  "revisionType": "AppSpecContent",
+  "appSpecContent": {
+    "content": "${APPSPEC_CONTENT}"
+  }
+}
+EOF
           
           echo "Created revision JSON:"
           cat revision.json
