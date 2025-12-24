@@ -1,0 +1,130 @@
+name: ECS Blue/Green Deployment Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deployment'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: arman-strapi-fargate
+  ECS_CLUSTER: arman-strapi-ecs-cluster
+  ECS_SERVICE: arman-strapi-ecs-service
+  ECS_TASK_DEFINITION: arman-strapi-ecs-task
+  CODEDEPLOY_APPLICATION: arman-strapi-ecs-codedeploy-app
+  CODEDEPLOY_DEPLOYMENT_GROUP: arman-strapi-ecs-deployment-group
+  CONTAINER_NAME: strapi
+
+jobs:
+  test-deployment:
+    name: Test Blue/Green Deployment
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Test AWS Connection
+        run: |
+          echo "Testing AWS connection..."
+          aws sts get-caller-identity
+          aws ecs describe-clusters --clusters ${{ env.ECS_CLUSTER }}
+
+      - name: Create Simple AppSpec
+        run: |
+          echo "Creating AppSpec file..."
+          
+          # Get current task definition
+          CURRENT_TASK_DEF=$(aws ecs describe-services \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SERVICE }} \
+            --query 'services[0].taskDefinition' \
+            --output text)
+          
+          echo "Current task definition: ${CURRENT_TASK_DEF}"
+          
+          # Create AppSpec
+          cat > appspec.yaml << 'EOF'
+version: 0.0
+Resources:
+  - TargetService:
+      Type: AWS::ECS::Service
+      Properties:
+        TaskDefinition: "PLACEHOLDER_TASK_DEF"
+        LoadBalancerInfo:
+          ContainerName: "strapi"
+          ContainerPort: 1337
+EOF
+          
+          # Replace placeholder
+          sed -i "s|PLACEHOLDER_TASK_DEF|${CURRENT_TASK_DEF}|g" appspec.yaml
+          
+          echo "AppSpec created:"
+          cat appspec.yaml
+
+      - name: Test CodeDeploy
+        run: |
+          echo "Testing CodeDeploy deployment..."
+          
+          # Base64 encode AppSpec
+          APPSPEC_B64=$(cat appspec.yaml | base64 -w 0)
+          
+          # Create revision
+          cat > revision.json << 'EOF'
+{
+  "revisionType": "AppSpecContent",
+  "appSpecContent": {
+    "content": "PLACEHOLDER_CONTENT"
+  }
+}
+EOF
+          
+          # Replace placeholder
+          sed -i "s|PLACEHOLDER_CONTENT|${APPSPEC_B64}|g" revision.json
+          
+          echo "Revision JSON:"
+          cat revision.json
+          
+          # Create deployment
+          DEPLOYMENT_ID=$(aws deploy create-deployment \
+            --application-name ${{ env.CODEDEPLOY_APPLICATION }} \
+            --deployment-group-name ${{ env.CODEDEPLOY_DEPLOYMENT_GROUP }} \
+            --description "Test deployment from GitHub Actions" \
+            --revision file://revision.json \
+            --query 'deploymentId' \
+            --output text)
+          
+          echo "Deployment ID: ${DEPLOYMENT_ID}"
+          
+          # Monitor for a short time
+          for i in {1..5}; do
+            STATUS=$(aws deploy get-deployment \
+              --deployment-id ${DEPLOYMENT_ID} \
+              --query 'deploymentInfo.status' \
+              --output text)
+            echo "Deployment status: ${STATUS}"
+            
+            if [ "${STATUS}" = "Succeeded" ]; then
+              echo "Deployment completed successfully!"
+              break
+            elif [ "${STATUS}" = "Failed" ]; then
+              echo "Deployment failed!"
+              aws deploy get-deployment \
+                --deployment-id ${DEPLOYMENT_ID} \
+                --query 'deploymentInfo.errorInformation'
+              break
+            fi
+            
+            sleep 30
+          done
